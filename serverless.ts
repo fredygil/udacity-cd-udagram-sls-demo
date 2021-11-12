@@ -59,6 +59,11 @@ const serverlessConfiguration: AWS = {
         Action: ["dynamodb:Query"],
         Resource: `arn:aws:dynamodb:${region}:*:table/Images-${stage}/index/\${self:provider.environment.IMAGE_ID_INDEX}`,
       },
+      {
+        Effect: "Allow",
+        Action: ["s3:PutObject", "s3:GetObject"],
+        Resource: `arn:aws:s3:::\${self:provider.environment.IMAGES_S3_BUCKET}/*`,
+      },
     ],
   },
   // import the function via paths
