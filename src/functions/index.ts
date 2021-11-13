@@ -3,3 +3,4 @@ export { default as getGroups } from './getGroups';
 export { default as postGroups } from './postGroups';
 export { default as getImages } from './getImages';
 export { default as getImage } from './getImage';
+export { default as s3SendNotification } from './s3SendNotification';

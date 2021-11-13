@@ -5,6 +5,7 @@ import postGroups from "@functions/postGroups";
 import getImages from "@functions/getImages";
 import getImage from "@functions/getImage";
 import postImage from "@functions/postImage";
+import s3SendNotification from "@functions/s3SendNotification";
 
 const stage = `\${opt:stage, 'dev'}`;
 const region = 'us-east-2';
@@ -67,7 +68,7 @@ const serverlessConfiguration: AWS = {
     ],
   },
   // import the function via paths
-  functions: { getGroups, postGroups, getImages, getImage, postImage },
+  functions: { getGroups, postGroups, getImages, getImage, postImage, s3SendNotification },
   resources: {
     Resources: {
       groupsDynamoDBTable: {
