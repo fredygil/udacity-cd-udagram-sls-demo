@@ -6,6 +6,8 @@ import getImages from "@functions/getImages";
 import getImage from "@functions/getImage";
 import postImage from "@functions/postImage";
 import s3SendNotification from "@functions/s3SendNotification";
+import wsConnect from "@functions/wsConnect";
+import wsDisconnect from "@functions/wsDisconnect";
 
 const stage = `\${opt:stage, 'dev'}`;
 const region = 'us-east-2';
@@ -39,6 +41,7 @@ const serverlessConfiguration: AWS = {
       NODE_OPTIONS: "--enable-source-maps --stack-trace-limit=1000",
       GROUPS_TABLE: `Groups-${stage}`,
       IMAGES_TABLE: `Images-${stage}`,
+      CONNECTIONS_TABLE: `Connections-${stage}`,
       IMAGE_ID_INDEX: `ImageIdIndex-${stage}`,
       IMAGES_S3_BUCKET: `sls-udagram-images-${stage}`,
       SIGNED_URL_EXPIRATION: '300',
@@ -65,10 +68,15 @@ const serverlessConfiguration: AWS = {
         Action: ["s3:PutObject", "s3:GetObject"],
         Resource: `arn:aws:s3:::\${self:provider.environment.IMAGES_S3_BUCKET}/*`,
       },
+      {
+        Effect: "Allow",
+        Action: ["dynamodb:Scan", "dynamodb:PutItem", "dynamodb:DeleteItem"],
+        Resource: `arn:aws:dynamodb:${region}:*:table/\${self:provider.environment.CONNECTIONS_TABLE}`,
+      },
     ],
   },
   // import the function via paths
-  functions: { getGroups, postGroups, getImages, getImage, postImage, s3SendNotification },
+  functions: { getGroups, postGroups, getImages, getImage, postImage, s3SendNotification, wsConnect, wsDisconnect },
   resources: {
     Resources: {
       groupsDynamoDBTable: {
@@ -130,6 +138,25 @@ const serverlessConfiguration: AWS = {
               Projection: {
                 ProjectionType: 'ALL',
               },
+            },
+          ],
+          BillingMode: "PAY_PER_REQUEST",
+        },
+      },
+      connectionsDynamoDBTable: {
+        Type: "AWS::DynamoDB::Table",
+        Properties: {
+          TableName: "${self:provider.environment.CONNECTIONS_TABLE}",
+          AttributeDefinitions: [
+            {
+              AttributeName: "id",
+              AttributeType: "S",
+            },
+          ],
+          KeySchema: [
+            {
+              AttributeName: "id",
+              KeyType: "HASH",
             },
           ],
           BillingMode: "PAY_PER_REQUEST",
