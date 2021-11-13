@@ -10,5 +10,12 @@ export default {
         existing: true,
       }
     }
-  ]
+  ],
+  environment: {
+    STAGE: "${self:provider.stage}",
+    API_ID:
+    {
+      Ref: "WebsocketsApi"
+    }
+  }
 }
