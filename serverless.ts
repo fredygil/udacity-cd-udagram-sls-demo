@@ -8,25 +8,20 @@ import postImage from "@functions/postImage";
 import s3SendNotification from "@functions/s3SendNotification";
 import wsConnect from "@functions/wsConnect";
 import wsDisconnect from "@functions/wsDisconnect";
+import esSync from "@functions/esSync";
 
 const stage = `\${opt:stage, 'dev'}`;
-const region = 'us-east-2';
+const region = "us-east-2";
 
 const serverlessConfiguration: AWS = {
   service: "serverless-udagram-app",
   frameworkVersion: "2",
   custom: {
-    esbuild: {
-      bundle: true,
-      minify: false,
-      sourcemap: true,
-      exclude: ["aws-sdk"],
-      target: "node14",
-      define: { "require.resolve": undefined },
-      platform: "node",
-    },
+    bundle: {
+      linting: false
+    }
   },
-  plugins: ["serverless-esbuild"],
+  plugins: ['serverless-bundle'],
   provider: {
     name: "aws",
     runtime: "nodejs14.x",
@@ -44,7 +39,7 @@ const serverlessConfiguration: AWS = {
       CONNECTIONS_TABLE: `Connections-${stage}`,
       IMAGE_ID_INDEX: `ImageIdIndex-${stage}`,
       IMAGES_S3_BUCKET: `sls-udagram-images-${stage}`,
-      SIGNED_URL_EXPIRATION: '300',
+      SIGNED_URL_EXPIRATION: "300",
     },
     lambdaHashingVersion: "20201221",
     iamRoleStatements: [
@@ -76,7 +71,17 @@ const serverlessConfiguration: AWS = {
     ],
   },
   // import the function via paths
-  functions: { getGroups, postGroups, getImages, getImage, postImage, s3SendNotification, wsConnect, wsDisconnect },
+  functions: {
+    getGroups,
+    postGroups,
+    getImages,
+    getImage,
+    postImage,
+    s3SendNotification,
+    wsConnect,
+    wsDisconnect,
+    esSync,
+  },
   resources: {
     Resources: {
       groupsDynamoDBTable: {
@@ -133,14 +138,17 @@ const serverlessConfiguration: AWS = {
                 {
                   AttributeName: "imageId",
                   KeyType: "HASH",
-                }
+                },
               ],
               Projection: {
-                ProjectionType: 'ALL',
+                ProjectionType: "ALL",
               },
             },
           ],
           BillingMode: "PAY_PER_REQUEST",
+          StreamSpecification: {
+            StreamViewType: "NEW_IMAGE",
+          },
         },
       },
       connectionsDynamoDBTable: {
@@ -169,34 +177,76 @@ const serverlessConfiguration: AWS = {
           CorsConfiguration: {
             CorsRules: [
               {
-                AllowedOrigins: ['*'],
-                AllowedHeaders: ['*'],
-                AllowedMethods: ['GET', 'PUT', 'POST', 'DELETE', 'HEAD'],
-                MaxAge: "${self:provider.environment.SIGNED_URL_EXPIRATION}"
-              }
-            ]
-          }
-        }
+                AllowedOrigins: ["*"],
+                AllowedHeaders: ["*"],
+                AllowedMethods: ["GET", "PUT", "POST", "DELETE", "HEAD"],
+                MaxAge: "${self:provider.environment.SIGNED_URL_EXPIRATION}",
+              },
+            ],
+          },
+        },
       },
       bucketPolicy: {
-        Type: 'AWS::S3::BucketPolicy',
+        Type: "AWS::S3::BucketPolicy",
         Properties: {
           PolicyDocument: {
-            Id: 'MyPolicy',
-            Version: '2012-10-17',
+            Id: "MyPolicy",
+            Version: "2012-10-17",
             Statement: [
               {
-                Sid: 'PublicReadForGetBucketObjects',
-                Effect: 'Allow',
-                Principal: '*',
-                Action: 's3:GetObject',
-                Resource: 'arn:aws:s3:::${self:provider.environment.IMAGES_S3_BUCKET}/*'
-              }
-            ]
+                Sid: "PublicReadForGetBucketObjects",
+                Effect: "Allow",
+                Principal: "*",
+                Action: "s3:GetObject",
+                Resource:
+                  "arn:aws:s3:::${self:provider.environment.IMAGES_S3_BUCKET}/*",
+              },
+            ],
           },
-          Bucket: { Ref: "attachmentsBucket" }
-        }
-      }
+          Bucket: { Ref: "attachmentsBucket" },
+        },
+      },
+      imagesSearch: {
+        Type: "AWS::Elasticsearch::Domain",
+        Properties: {
+          ElasticsearchVersion: "6.3",
+          DomainName: `images-search-${stage}`,
+          ElasticsearchClusterConfig: {
+            DedicatedMasterEnabled: false,
+            InstanceCount: "1",
+            ZoneAwarenessEnabled: false,
+            InstanceType: "t2.small.elasticsearch",
+          },
+          EBSOptions: {
+            EBSEnabled: true,
+            Iops: 0,
+            VolumeSize: 10,
+            VolumeType: "gp2",
+          },
+          AccessPolicies: {
+            Version: "2012-10-17",
+            Statement: [
+              {
+                Effect: "Allow",
+                Principal: {
+                  AWS: "*",
+                },
+                Action: [
+                  "es:ESHttp*"
+                ],
+                Resource: {
+                  "Fn::Sub": `arn:aws:es:${region}:\${AWS::AccountId}:domain/images-search-${stage}/*`
+                },
+                Condition: {
+                  IpAddress: {
+                    "aws:SourceIp": ["186.144.214.236"],
+                  }
+                }
+              },
+            ],
+          },
+        },
+      },
     },
   },
   variablesResolutionMode: "20210326",
