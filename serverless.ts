@@ -12,9 +12,10 @@ import esSync from "@functions/esSync";
 
 const stage = `\${opt:stage, 'dev'}`;
 const region = "us-east-2";
+const service = "serverless-udagram-app";
 
 const serverlessConfiguration: AWS = {
-  service: "serverless-udagram-app",
+  service,
   frameworkVersion: "2",
   custom: {
     bundle: {
@@ -229,10 +230,24 @@ const serverlessConfiguration: AWS = {
               {
                 Effect: "Allow",
                 Principal: {
+                  AWS: {
+                    "Fn::Sub": `arn:aws:sts::\${AWS::AccountId}:assumed-role/${service}-${stage}-${region}-lambdaRole/${service}-${stage}-esSync`
+                  },
+                },
+                Action: [
+                  "es:*"
+                ],
+                Resource: {
+                  "Fn::Sub": `arn:aws:es:${region}:\${AWS::AccountId}:domain/images-search-${stage}/*`
+                },
+              },
+              {
+                Effect: "Allow",
+                Principal: {
                   AWS: "*",
                 },
                 Action: [
-                  "es:ESHttp*"
+                  "es:*"
                 ],
                 Resource: {
                   "Fn::Sub": `arn:aws:es:${region}:\${AWS::AccountId}:domain/images-search-${stage}/*`

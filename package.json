@@ -14,6 +14,7 @@
     "@middy/core": "^1.5.2",
     "@middy/http-json-body-parser": "^1.5.2",
     "@types/elasticsearch": "^5.0.40",
+    "@acuris/aws-es-connection": "^2.3.0",
     "http-aws-es": "^6.0.0",
     "uuid": "^8.3.2"
   },

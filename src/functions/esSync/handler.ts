@@ -1,12 +1,20 @@
 import { DynamoDBStreamEvent, DynamoDBStreamHandler } from "aws-lambda";
+import { createAWSConnection, awsGetCredentials } from '@acuris/aws-es-connection'
 import { Client } from "@elastic/elasticsearch";
 import { middyfy } from "@libs/lambda";
 
-const client = new Client({ node: `https://${process.env.ES_ENDPOINT}` });
+// const client = new Client({ node: `https://${process.env.ES_ENDPOINT}` });
 
 const esSync: DynamoDBStreamHandler = async (event: DynamoDBStreamEvent) => {
   console.log("Processing events batch from DynamoDB", JSON.stringify(event));
 
+  const awsCredentials = await awsGetCredentials()
+  const AWSConnection = createAWSConnection(awsCredentials)
+  const client = new Client({
+    ...AWSConnection,
+    node: `https://${process.env.ES_ENDPOINT}`
+  })
+  
   for (const record of event.Records) {
     console.log("Processing record", JSON.stringify(record));
 
@@ -24,14 +32,12 @@ const esSync: DynamoDBStreamHandler = async (event: DynamoDBStreamEvent) => {
       timestamp: newItem.timestamp.S,
     };
 
-    if (client) {
-      await client.index({
-        index: "images-index",
-        type: "images",
-        id: imageId,
-        body,
-      });
-    }
+    await client.index({
+      index: "images-index",
+      type: "images",
+      id: imageId,
+      body,
+    });
   }
 };
 
