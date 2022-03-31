@@ -6,6 +6,7 @@ import getImages from "@functions/getImages";
 import getImage from "@functions/getImage";
 import postImage from "@functions/postImage";
 import sendUploadNotifications from "@functions/sendUploadNotifications";
+import resizeImage from "@functions/resizeImage";
 import wsConnect from "@functions/wsConnect";
 import wsDisconnect from "@functions/wsDisconnect";
 import esSync from "@functions/esSync";
@@ -42,6 +43,7 @@ const serverlessConfiguration: AWS = {
       IMAGE_ID_INDEX: `ImageIdIndex-${stage}`,
       IMAGES_S3_BUCKET: `sls-udagram-images-${stage}`,
       SIGNED_URL_EXPIRATION: "300",
+      THUMBNAILS_S3_BUCKET: `sls-udagram-thumbnails-${stage}`,
     },
     lambdaHashingVersion: "20201221",
     iamRoleStatements: [
@@ -67,6 +69,11 @@ const serverlessConfiguration: AWS = {
       },
       {
         Effect: "Allow",
+        Action: ["s3:PutObject"],
+        Resource: `arn:aws:s3:::\${self:provider.environment.THUMBNAILS_S3_BUCKET}/*`,
+      },
+      {
+        Effect: "Allow",
         Action: ["dynamodb:Scan", "dynamodb:PutItem", "dynamodb:DeleteItem"],
         Resource: `arn:aws:dynamodb:${region}:*:table/\${self:provider.environment.CONNECTIONS_TABLE}`,
       },
@@ -80,6 +87,7 @@ const serverlessConfiguration: AWS = {
     getImage,
     postImage,
     sendUploadNotifications,
+    resizeImage,
     wsConnect,
     wsDisconnect,
     esSync,
@@ -194,6 +202,12 @@ const serverlessConfiguration: AWS = {
               },
             ],
           },
+        },
+      },
+      thumbnailsBucket: {
+        Type: "AWS::S3::Bucket",
+        Properties: {
+          BucketName: "${self:provider.environment.THUMBNAILS_S3_BUCKET}",
         },
       },
       bucketPolicy: {

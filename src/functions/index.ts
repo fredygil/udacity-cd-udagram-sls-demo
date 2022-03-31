@@ -4,5 +4,6 @@ export { default as getImages } from './getImages';
 export { default as getImage } from './getImage';
 export { default as s3SendNotification } from './s3SendNotification';
 export { default as sendUploadNotifications } from './sendUploadNotifications';
+export { default as resizeImage } from './resizeImage';
 export { default as wsConnect } from './wsConnect';
 export { default as wsDisconnect } from './wsDisconnect';
