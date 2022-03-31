@@ -5,7 +5,7 @@ import postGroups from "@functions/postGroups";
 import getImages from "@functions/getImages";
 import getImage from "@functions/getImage";
 import postImage from "@functions/postImage";
-import s3SendNotification from "@functions/s3SendNotification";
+import sendUploadNotifications from "@functions/sendUploadNotifications";
 import wsConnect from "@functions/wsConnect";
 import wsDisconnect from "@functions/wsDisconnect";
 import esSync from "@functions/esSync";
@@ -19,10 +19,11 @@ const serverlessConfiguration: AWS = {
   frameworkVersion: "2",
   custom: {
     bundle: {
-      linting: false
-    }
+      linting: false,
+    },
+    topicName: `imagesTopic-${stage}`,
   },
-  plugins: ['serverless-bundle'],
+  plugins: ["serverless-bundle"],
   provider: {
     name: "aws",
     runtime: "nodejs14.x",
@@ -78,7 +79,7 @@ const serverlessConfiguration: AWS = {
     getImages,
     getImage,
     postImage,
-    s3SendNotification,
+    sendUploadNotifications,
     wsConnect,
     wsDisconnect,
     esSync,
@@ -175,6 +176,14 @@ const serverlessConfiguration: AWS = {
         Type: "AWS::S3::Bucket",
         Properties: {
           BucketName: "${self:provider.environment.IMAGES_S3_BUCKET}",
+          NotificationConfiguration: {
+            TopicConfigurations: [
+              {
+                Event: "s3:ObjectCreated:Put",
+                Topic: { Ref: "imagesTopic" },
+              },
+            ],
+          },
           CorsConfiguration: {
             CorsRules: [
               {
@@ -207,6 +216,39 @@ const serverlessConfiguration: AWS = {
           Bucket: { Ref: "attachmentsBucket" },
         },
       },
+      SNSTopicPolicy: {
+        Type: "AWS::SNS::TopicPolicy",
+        Properties: {
+          PolicyDocument: {
+            Version: "2012-10-17",
+            Statement: [
+              {
+                Effect: "Allow",
+                Principal: {
+                  AWS: "*",
+                },
+                Action: "sns:Publish",
+                Resource: {
+                  Ref: "imagesTopic",
+                },
+                Condition: {
+                  ArnLike: {
+                    "AWS:SourceArn":  "arn:aws:s3:::${self:provider.environment.IMAGES_S3_BUCKET}",
+                  }
+                },
+              },
+            ],
+          },
+          Topics: [{ Ref: "imagesTopic" }],
+        },
+      },
+      imagesTopic: {
+        Type: "AWS::SNS::Topic",
+        Properties: {
+          DisplayName: "Image bucket topic",
+          TopicName: "${self:custom.topicName}",
+        },
+      },
       imagesSearch: {
         Type: "AWS::Elasticsearch::Domain",
         Properties: {
@@ -231,14 +273,12 @@ const serverlessConfiguration: AWS = {
                 Effect: "Allow",
                 Principal: {
                   AWS: {
-                    "Fn::Sub": `arn:aws:sts::\${AWS::AccountId}:assumed-role/${service}-${stage}-${region}-lambdaRole/${service}-${stage}-esSync`
+                    "Fn::Sub": `arn:aws:sts::\${AWS::AccountId}:assumed-role/${service}-${stage}-${region}-lambdaRole/${service}-${stage}-esSync`,
                   },
                 },
-                Action: [
-                  "es:*"
-                ],
+                Action: ["es:*"],
                 Resource: {
-                  "Fn::Sub": `arn:aws:es:${region}:\${AWS::AccountId}:domain/images-search-${stage}/*`
+                  "Fn::Sub": `arn:aws:es:${region}:\${AWS::AccountId}:domain/images-search-${stage}/*`,
                 },
               },
               {
@@ -246,17 +286,15 @@ const serverlessConfiguration: AWS = {
                 Principal: {
                   AWS: "*",
                 },
-                Action: [
-                  "es:*"
-                ],
+                Action: ["es:*"],
                 Resource: {
-                  "Fn::Sub": `arn:aws:es:${region}:\${AWS::AccountId}:domain/images-search-${stage}/*`
+                  "Fn::Sub": `arn:aws:es:${region}:\${AWS::AccountId}:domain/images-search-${stage}/*`,
                 },
                 Condition: {
                   IpAddress: {
                     "aws:SourceIp": ["186.144.214.236"],
-                  }
-                }
+                  },
+                },
               },
             ],
           },
