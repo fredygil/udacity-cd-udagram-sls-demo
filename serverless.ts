@@ -10,6 +10,7 @@ import resizeImage from "@functions/resizeImage";
 import wsConnect from "@functions/wsConnect";
 import wsDisconnect from "@functions/wsDisconnect";
 import esSync from "@functions/esSync";
+import auth from "@functions/auth";
 
 const stage = `\${opt:stage, 'dev'}`;
 const region = "us-east-2";
@@ -91,9 +92,26 @@ const serverlessConfiguration: AWS = {
     wsConnect,
     wsDisconnect,
     esSync,
+    auth,
   },
   resources: {
     Resources: {
+      GatewayResponseDefault4XX: {
+        Type: "AWS::ApiGateway::GatewayResponse",
+        Properties: {
+          ResponseParameters: {
+            "gatewayresponse.header.Access-Control-Allow-Origin": "'*'",
+            "gatewayresponse.header.Access-Control-Allow-Headers":
+              "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
+            "gatewayresponse.header.Access-Control-Allow-Methods":
+              "'GET,OPTIONS,POST'",
+          },
+          ResponseType: "DEFAULT_4XX",
+          RestApiId: {
+            Ref: "ApiGatewayRestApi",
+          },
+        },
+      },
       groupsDynamoDBTable: {
         Type: "AWS::DynamoDB::Table",
         Properties: {
@@ -247,8 +265,9 @@ const serverlessConfiguration: AWS = {
                 },
                 Condition: {
                   ArnLike: {
-                    "AWS:SourceArn":  "arn:aws:s3:::${self:provider.environment.IMAGES_S3_BUCKET}",
-                  }
+                    "AWS:SourceArn":
+                      "arn:aws:s3:::${self:provider.environment.IMAGES_S3_BUCKET}",
+                  },
                 },
               },
             ],
