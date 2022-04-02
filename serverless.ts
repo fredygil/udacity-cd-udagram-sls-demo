@@ -45,6 +45,8 @@ const serverlessConfiguration: AWS = {
       IMAGES_S3_BUCKET: `sls-udagram-images-${stage}`,
       SIGNED_URL_EXPIRATION: "300",
       THUMBNAILS_S3_BUCKET: `sls-udagram-thumbnails-${stage}`,
+      AUTH_0_SECRET_ID: `Auth0Secret-${stage}`,
+      AUTH_0_SECRET_FIELD: "auth0Secret",
     },
     lambdaHashingVersion: "20201221",
     iamRoleStatements: [
@@ -77,6 +79,16 @@ const serverlessConfiguration: AWS = {
         Effect: "Allow",
         Action: ["dynamodb:Scan", "dynamodb:PutItem", "dynamodb:DeleteItem"],
         Resource: `arn:aws:dynamodb:${region}:*:table/\${self:provider.environment.CONNECTIONS_TABLE}`,
+      },
+      {
+        Effect: "Allow",
+        Action: ["secretsmanager:GetSecretValue"],
+        Resource: { Ref: "Auth0Secret" },
+      },
+      {
+        Effect: "Allow",
+        Action: ["kms:Decrypt"],
+        Resource: [{ "Fn::GetAtt": ["KMSKey", "Arn"] }],
       },
     ],
   },
@@ -331,6 +343,47 @@ const serverlessConfiguration: AWS = {
               },
             ],
           },
+        },
+      },
+      KMSKey: {
+        Type: "AWS::KMS::Key",
+        Properties: {
+          Description: "KMS Key to encrypt Auth0 certificate",
+          KeyPolicy: {
+            Id: "key-default-1",
+            Version: "2012-10-17",
+            Statement: [
+              {
+                Sid: "Allow administration of the key",
+                Effect: "Allow",
+                Principal: {
+                  AWS: {
+                    "Fn::Join": [
+                      ":",
+                      ["arn:aws:iam:", { Ref: "AWS::AccountId" }, "root"],
+                    ],
+                  },
+                },
+                Action: "kms:*",
+                Resource: "*",
+              },
+            ],
+          },
+        },
+      },
+      KMSKeyAlias: {
+        Type: "AWS::KMS::Alias",
+        Properties: {
+          AliasName: `alias/auth0Key-${stage}`,
+          TargetKeyId: { Ref: "KMSKey" },
+        },
+      },
+      Auth0Secret: {
+        Type: "AWS::SecretsManager::Secret",
+        Properties: {
+          Name: "${self:provider.environment.AUTH_0_SECRET_ID}",
+          Description: "Auth0 secret",
+          KmsKeyId: { Ref: "KMSKey" },
         },
       },
     },
