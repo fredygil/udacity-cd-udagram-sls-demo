@@ -8,3 +8,4 @@ export { default as resizeImage } from './resizeImage';
 export { default as wsConnect } from './wsConnect';
 export { default as wsDisconnect } from './wsDisconnect';
 export { default as auth } from './auth';
+export { default as authrs256 } from './authrs256';

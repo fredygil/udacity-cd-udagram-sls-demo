@@ -11,6 +11,7 @@ import wsConnect from "@functions/wsConnect";
 import wsDisconnect from "@functions/wsDisconnect";
 import esSync from "@functions/esSync";
 import auth from "@functions/auth";
+import authrs256 from "@functions/authrs256";
 
 const stage = `\${opt:stage, 'dev'}`;
 const region = "us-east-2";
@@ -47,6 +48,8 @@ const serverlessConfiguration: AWS = {
       THUMBNAILS_S3_BUCKET: `sls-udagram-thumbnails-${stage}`,
       AUTH_0_SECRET_ID: `Auth0Secret-${stage}`,
       AUTH_0_SECRET_FIELD: "auth0Secret",
+      AUTH_0_CERT_ID: `Auth0Cert-${stage}`,
+      AUTH_0_CERT_FIELD: "auth0Cert",
     },
     lambdaHashingVersion: "20201221",
     iamRoleStatements: [
@@ -87,8 +90,18 @@ const serverlessConfiguration: AWS = {
       },
       {
         Effect: "Allow",
+        Action: ["secretsmanager:GetSecretValue"],
+        Resource: { Ref: "Auth0Cert" },
+      },
+      {
+        Effect: "Allow",
         Action: ["kms:Decrypt"],
-        Resource: [{ "Fn::GetAtt": ["KMSKey", "Arn"] }],
+        Resource: [{ "Fn::GetAtt": ["KMSKeySecret", "Arn"] }],
+      },
+      {
+        Effect: "Allow",
+        Action: ["kms:Decrypt"],
+        Resource: [{ "Fn::GetAtt": ["KMSKeyCert", "Arn"] }],
       },
     ],
   },
@@ -105,6 +118,7 @@ const serverlessConfiguration: AWS = {
     wsDisconnect,
     esSync,
     auth,
+    authrs256,
   },
   resources: {
     Resources: {
@@ -345,10 +359,10 @@ const serverlessConfiguration: AWS = {
           },
         },
       },
-      KMSKey: {
+      KMSKeySecret: {
         Type: "AWS::KMS::Key",
         Properties: {
-          Description: "KMS Key to encrypt Auth0 certificate",
+          Description: "KMS Key to encrypt Auth0 secret",
           KeyPolicy: {
             Id: "key-default-1",
             Version: "2012-10-17",
@@ -371,11 +385,44 @@ const serverlessConfiguration: AWS = {
           },
         },
       },
-      KMSKeyAlias: {
+      KMSKeyCert: {
+        Type: "AWS::KMS::Key",
+        Properties: {
+          Description: "KMS Key to encrypt Auth0 certificate",
+          KeyPolicy: {
+            Id: "key-default-2",
+            Version: "2012-10-17",
+            Statement: [
+              {
+                Sid: "Allow administration of the key",
+                Effect: "Allow",
+                Principal: {
+                  AWS: {
+                    "Fn::Join": [
+                      ":",
+                      ["arn:aws:iam:", { Ref: "AWS::AccountId" }, "root"],
+                    ],
+                  },
+                },
+                Action: "kms:*",
+                Resource: "*",
+              },
+            ],
+          },
+        },
+      },
+      KMSKeySecretAlias: {
         Type: "AWS::KMS::Alias",
         Properties: {
-          AliasName: `alias/auth0Key-${stage}`,
-          TargetKeyId: { Ref: "KMSKey" },
+          AliasName: `alias/auth0KeySecret-${stage}`,
+          TargetKeyId: { Ref: "KMSKeySecret" },
+        },
+      },
+      KMSKeyCertAlias: {
+        Type: "AWS::KMS::Alias",
+        Properties: {
+          AliasName: `alias/auth0KeyCert-${stage}`,
+          TargetKeyId: { Ref: "KMSKeyCert" },
         },
       },
       Auth0Secret: {
@@ -383,7 +430,15 @@ const serverlessConfiguration: AWS = {
         Properties: {
           Name: "${self:provider.environment.AUTH_0_SECRET_ID}",
           Description: "Auth0 secret",
-          KmsKeyId: { Ref: "KMSKey" },
+          KmsKeyId: { Ref: "KMSKeySecret" },
+        },
+      },
+      Auth0Cert: {
+        Type: "AWS::SecretsManager::Secret",
+        Properties: {
+          Name: "${self:provider.environment.AUTH_0_CERT_ID}",
+          Description: "Auth0 cert",
+          KmsKeyId: { Ref: "KMSKeyCert" },
         },
       },
     },
