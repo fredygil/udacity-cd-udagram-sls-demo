@@ -9,7 +9,6 @@ import {verify} from "jsonwebtoken";
 import {JwtToken} from "../../libs/jwtToken";
 
 const secretId = process.env.AUTH_0_CERT_ID;
-const secretField = process.env.AUTH_0_CERT_FIELD;
 const client = new AWS.SecretsManager();
 // Cache secret if a Lambda instance is reused
 let cachedSecret: string;
