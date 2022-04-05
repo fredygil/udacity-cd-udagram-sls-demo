@@ -1,15 +1,9 @@
 import type { APIGatewayProxyHandler, APIGatewayProxyResult } from 'aws-lambda';
 import { middyfy } from '@libs/lambda';
-import * as AWS from 'aws-sdk';
-
-const docClient = new AWS.DynamoDB.DocumentClient()
-const tableName = process.env.GROUPS_TABLE
+import { getAllGroups } from 'src/businessLogic/groups';
 
 const getGroups: APIGatewayProxyHandler = async (): Promise<APIGatewayProxyResult> => {
-  const result = await docClient.scan({
-    TableName: tableName
-  }).promise()
-  const items = result.Items
+  const  groups = await getAllGroups()
 
   const response = {
     statusCode: 200,
@@ -17,7 +11,7 @@ const getGroups: APIGatewayProxyHandler = async (): Promise<APIGatewayProxyResul
       'Access-Control-Allow-Origin': '*',
     },
     body: JSON.stringify({
-      items
+      items: groups
     }),
   };
   return response;

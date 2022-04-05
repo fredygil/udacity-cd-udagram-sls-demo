@@ -2,7 +2,7 @@ import type { ValidatedEventAPIGatewayProxyEvent } from '@libs/apiGateway';
 import { middyfy } from '@libs/lambda';
 import * as AWS from 'aws-sdk';
 import * as uuid from 'uuid';
-import { getUserId } from '@libs/user';
+
 import schema from './schema';
 
 const docClient = new AWS.DynamoDB.DocumentClient()
@@ -32,14 +32,10 @@ const postImage: ValidatedEventAPIGatewayProxyEvent<typeof schema> = async (even
   }
 
   const imageId = uuid.v4()
-    // Get user id
-    const userId = getUserId(event.headers.Authorizatorion.split(" ")[1])
-
   const newItem = {
     groupId,
     timestamp: new Date().toISOString(),
     imageId,
-    userId,
     title: event.body.title,
     imageUrl: `https://${bucketName}.s3.amazonaws.com/${imageId}`,
   };

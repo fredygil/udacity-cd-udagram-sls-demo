@@ -10,11 +10,12 @@
     "node": ">=14.15.0"
   },
   "dependencies": {
+    "@acuris/aws-es-connection": "^2.3.0",
     "@elastic/elasticsearch": "^6.8.8",
     "@middy/core": "^1.5.2",
     "@middy/http-json-body-parser": "^1.5.2",
     "@types/elasticsearch": "^5.0.40",
-    "@acuris/aws-es-connection": "^2.3.0",
+    "aws-xray-sdk": "^3.3.4",
     "http-aws-es": "^6.0.0",
     "jsonwebtoken": "^8.5.1",
     "uuid": "^8.3.2"
