@@ -25,8 +25,22 @@ const serverlessConfiguration: AWS = {
       linting: false,
     },
     topicName: `imagesTopic-${stage}`,
+    "serverless-offline": { httpPort: 3003 },
+    dynamodb: {
+      stages: ['dev'],
+      start: {
+        port: 8000,
+        inMemory: true,
+        migrate: true,
+        shell: true,
+      },
+    },
   },
-  plugins: ["serverless-bundle"],
+  plugins: [
+    "serverless-bundle",
+    "serverless-dynamodb-local",
+    "serverless-offline",
+  ],
   provider: {
     name: "aws",
     runtime: "nodejs14.x",
